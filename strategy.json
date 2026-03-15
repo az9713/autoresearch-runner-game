@@ -1,5 +1,5 @@
 {
-    "jump_trigger": 85.0,
+    "jump_trigger": 90.0,
     "jump_max_dist": 140.0,
     "emergency_dist": 10.0,
     "speed_factor": 4.5,
