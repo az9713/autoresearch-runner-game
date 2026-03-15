@@ -1,0 +1,4 @@
+iter	mean	min	max	pct50	status
+0	72.7	57	87	100	baseline
+1	72.9	34	87	93	KEEP
+2	74.0	57	87	100	KEEP

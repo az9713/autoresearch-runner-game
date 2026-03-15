@@ -1,0 +1,12 @@
+{
+    "jump_trigger": 60.0,
+    "jump_max_dist": 140.0,
+    "emergency_dist": 10.0,
+    "speed_factor": 1.0,
+    "dj_height_frac": 0.9,
+    "dj_min_ticks": 6,
+    "dj_max_dist": 80.0,
+    "duck_trigger": 60.0,
+    "duck_release": -25.0,
+    "duck_speed_factor": 1.0
+}
