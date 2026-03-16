@@ -2,3 +2,31 @@ iter	mean	min	max	pct50	status
 0	72.7	57	87	100	baseline
 1	72.9	34	87	93	KEEP
 2	74.0	57	87	100	KEEP
+baseline	12.3	0	keep	baseline
+f291608	22.1	20	keep	jump_trigger: 45.0 -> 60.0, speed_factor: 0.5 -> 1.0, dj_height_frac: 0.5 -> 0.8, dj_max_dist: 40.0 -> 60.0
+20e21e2	22.1	20	discard	jump_trigger: 60.0 -> 85.0, dj_height_frac: 0.8 -> 1.1, dj_min_ticks: 10.0 -> 5.0
+7f65621	22.1	20	discard	jump_trigger: 60.0 -> 80.0, speed_factor: 1.0 -> 2.0, dj_height_frac: 0.8 -> 1.0, dj_max_dist: 60.0 -> 90.0
+7660c66	22.1	20	discard	jump_trigger: 60.0 -> 90.0, speed_factor: 1.0 -> 1.5, dj_height_frac: 0.8 -> 1.1, dj_max_dist: 60.0 -> 80.0
+fac75a3	22.1	20	discard	jump_trigger: 60.0 -> 90.0, speed_factor: 1.0 -> 2.0, dj_height_frac: 0.8 -> 1.0, dj_min_ticks: 10.0 -> 5.0
+79f8246	22.1	20	discard	jump_trigger: 60.0 -> 85.0, dj_height_frac: 0.8 -> 0.9, dj_max_dist: 60.0 -> 90.0
+baseline	12.3	0	keep	baseline
+fa8e0b1	22.1	20	keep	jump_trigger: 45.0 -> 65.0, speed_factor: 0.5 -> 0.8, dj_height_frac: 0.5 -> 1.2, dj_max_dist: 40.0 -> 70.0
+ef40071	22.1	20	discard	jump_trigger: 65.0 -> 75.0, speed_factor: 0.8 -> 1.2, dj_height_frac: 1.2 -> 1.4, dj_max_dist: 70.0 -> 90.0
+098ca8a	22.1	20	discard	jump_trigger: 65.0 -> 70.0, dj_min_ticks: 10.0 -> 5.0, dj_max_dist: 70.0 -> 90.0
+2e5f70a	22.1	20	discard	jump_trigger: 65.0 -> 85.0, emergency_dist: 8.0 -> 12.0, speed_factor: 0.8 -> 1.8, dj_min_ticks: 10.0 -> 6.0
+69f5894	22.1	20	discard	jump_trigger: 65.0 -> 75.0, speed_factor: 0.8 -> 1.5, dj_min_ticks: 10.0 -> 5.0
+121f89e	22.1	20	discard	jump_trigger: 65.0 -> 75.0, speed_factor: 0.8 -> 1.8, dj_min_ticks: 10.0 -> 5.0, duck_trigger: 40.0 -> 50.0
+ffc7daa	22.1	20	discard	jump_trigger: 65.0 -> 85.0, dj_height_frac: 1.2 -> 1.1, dj_min_ticks: 10.0 -> 6.0
+65fb595	22.1	20	discard	jump_trigger: 65.0 -> 75.0, speed_factor: 0.8 -> 1.0, dj_height_frac: 1.2 -> 1.4, dj_max_dist: 70.0 -> 90.0
+b84993e	22.1	20	discard	jump_trigger: 65.0 -> 80.0, dj_min_ticks: 10.0 -> 6.0, duck_trigger: 40.0 -> 60.0, duck_speed_factor: 0.3 -> 1.0
+baseline	12.3	0	keep	baseline
+baseline	12.3	0	keep	baseline
+c9eec90	60.4	43	keep	jump_trigger: 45.0 -> 85.0, speed_factor: 0.5 -> 3.0, duck_trigger: 40.0 -> 90.0, duck_release: -10.0 -> -40.0, duck_speed_factor: 0.3 -> 1.5
+0098f6f	21.6	0	discard	jump_trigger: 85.0 -> 105.0, speed_factor: 3.0 -> 4.5, duck_trigger: 90.0 -> 100.0
+04a1717	2.5	0	discard	jump_trigger: 85.0 -> 105.0, speed_factor: 3.0 -> 5.0, duck_trigger: 90.0 -> 110.0, duck_speed_factor: 1.5 -> 2.0
+22f1ba6	0.5	0	discard	jump_trigger: 85.0 -> 115.0, speed_factor: 3.0 -> 4.0, dj_min_ticks: 10.0 -> 5.0, duck_trigger: 90.0 -> 105.0
+1380cf6	56.9	2	discard	jump_trigger: 85.0 -> 105.0, speed_factor: 3.0 -> 4.0, duck_trigger: 90.0 -> 115.0, duck_speed_factor: 1.5 -> 2.0
+09225ed	60.5	2	keep	jump_trigger: 85.0 -> 110.0, duck_trigger: 90.0 -> 120.0, duck_speed_factor: 1.5 -> 2.0
+6c168d5	0.0	0	discard	jump_trigger: 110.0 -> 130.0, dj_height_frac: 0.5 -> 0.9, dj_min_ticks: 10.0 -> 5.0, dj_max_dist: 40.0 -> 80.0
+5ff7e6f	62.2	43	keep	jump_trigger: 110.0 -> 85.0, speed_factor: 3.0 -> 4.5, duck_trigger: 120.0 -> 110.0
+0bee5ca	76.6	62	keep	jump_trigger: 85.0 -> 95.0, dj_height_frac: 0.5 -> 1.1, dj_min_ticks: 10.0 -> 6.0, dj_max_dist: 40.0 -> 80.0

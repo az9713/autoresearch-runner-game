@@ -120,12 +120,19 @@ Worst 5 deaths:
 
     user_msg += f"\n## Past Learnings\n{resources}\n"
 
-    if plateau_count >= 3:
+    mean_score = last_run.get('mean_score', 0)
+
+    if plateau_count >= 3 and mean_score < 25:
         user_msg += f"\n## WARNING: PLATEAU DETECTED ({plateau_count} consecutive discards)\n"
         user_msg += "Your previous suggestions have NOT improved scores. You MUST try something DIFFERENT.\n"
-        user_msg += "Look at death_by_type above. If 'high' deaths > 0, you MUST increase duck_trigger and duck_speed_factor.\n"
         user_msg += "If scores are stuck around 20, high obstacles at obstacle index 20+ are killing the AI.\n"
-        user_msg += "Try BOLD changes: duck_trigger=100, duck_speed_factor=1.5, duck_release=-40.\n"
+        user_msg += "Try BOLD changes: duck_trigger=100, duck_speed_factor=1.5, duck_release=-40, jump_trigger=85, speed_factor=3.0.\n"
+    elif plateau_count >= 2 and mean_score >= 40:
+        user_msg += f"\n## NEAR TARGET -- FINE-TUNE ONLY ({plateau_count} consecutive discards)\n"
+        user_msg += f"Current mean={mean_score:.1f} is close to target. Your last {plateau_count} attempts OVERSHOT and made things WORSE.\n"
+        user_msg += "Make SMALL changes only -- adjust 1-2 parameters by 5-15%. Do NOT make large jumps.\n"
+        user_msg += "Focus on the specific obstacle type causing the worst deaths. Tweak, don't overhaul.\n"
+        user_msg += "If jump_trigger is 85 and working well, try 80 or 90, NOT 105 or 115.\n"
 
     user_msg += "\nPropose improved parameters. Respond with JSON only."
 

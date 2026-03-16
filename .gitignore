@@ -1,0 +1,6 @@
+.env
+.ignore/
+__pycache__/
+*.pyc
+run.log
+last_run.json
