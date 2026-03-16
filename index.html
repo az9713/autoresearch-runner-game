@@ -2,570 +2,336 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Self-Improving Runner Game</title>
+<title>Self-Improving Runner Game (Karpathy + Gemini)</title>
 <style>
-* { margin: 0; padding: 0; box-sizing: border-box; }
-body { background: #0a0a1a; color: #e0e0e0; font-family: 'Courier New', monospace; overflow: hidden; }
-canvas { display: block; margin: 0 auto; }
-#ui {
-  position: fixed; top: 0; left: 0; right: 0;
-  padding: 10px 20px;
-  display: flex; justify-content: space-between; align-items: center;
-  background: rgba(10,10,26,0.85);
-  z-index: 10;
-  font-size: 14px;
-}
-#ui .score { font-size: 28px; font-weight: bold; color: #0ff; }
-#ui .gen { color: #f0a; }
-#ui .info { color: #8f8; }
-#controls {
-  position: fixed; bottom: 0; left: 0; right: 0;
-  padding: 10px 20px;
-  background: rgba(10,10,26,0.9);
-  display: flex; gap: 10px; align-items: center; justify-content: center;
-  z-index: 10;
-}
-button {
-  background: #1a1a3a; color: #0ff; border: 1px solid #0ff;
-  padding: 8px 16px; cursor: pointer; font-family: inherit; font-size: 13px;
-  border-radius: 4px;
-}
-button:hover { background: #0ff; color: #0a0a1a; }
-button.active { background: #0ff; color: #0a0a1a; }
-#log {
-  position: fixed; right: 10px; top: 50px; width: 280px; bottom: 50px;
-  background: rgba(10,10,26,0.9); border: 1px solid #333;
-  padding: 8px; overflow-y: auto; font-size: 11px; z-index: 10;
-  border-radius: 4px;
-}
-#log .keep { color: #0f0; }
-#log .discard { color: #666; }
-#log .header { color: #f0a; font-weight: bold; margin-bottom: 4px; }
-#progress-bar {
-  position: fixed; left: 10px; top: 50px; width: 200px;
-  background: rgba(10,10,26,0.9); border: 1px solid #333;
-  padding: 8px; z-index: 10; border-radius: 4px; font-size: 11px;
-}
-.bar-fill { height: 6px; background: #0ff; border-radius: 3px; transition: width 0.3s; }
-.bar-bg { height: 6px; background: #222; border-radius: 3px; margin-top: 4px; }
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0a0a1a;color:#e0e0e0;font-family:'Courier New',monospace;overflow:hidden}
+canvas{display:block}
+#ui{position:fixed;top:0;left:0;right:0;padding:8px 20px;display:flex;justify-content:space-between;align-items:center;background:rgba(10,10,26,0.92);z-index:10;font-size:14px;border-bottom:1px solid #222}
+#ui .score{font-size:32px;font-weight:bold;color:#0ff}
+#ui .gen{color:#f0a;font-size:15px}
+#ui .ep{color:#ff0;font-size:13px}
+#ui .info{color:#8f8}
+#controls{position:fixed;bottom:0;left:0;right:0;padding:10px 20px;background:rgba(10,10,26,0.95);border-top:1px solid #222;z-index:10;display:flex;gap:8px;align-items:center;justify-content:center;flex-wrap:wrap}
+.cl{color:#888;font-size:11px;margin-right:2px}
+button{background:#1a1a3a;color:#0ff;border:1px solid #0ff;padding:6px 14px;cursor:pointer;font-family:inherit;font-size:12px;border-radius:4px}
+button:hover{background:#0ff;color:#0a0a1a}
+button.active{background:#0ff;color:#0a0a1a;font-weight:bold}
+button:disabled{opacity:0.3;cursor:not-allowed}
+button.bg{border-color:#0f0;color:#0f0}button.bg:hover{background:#0f0;color:#0a0a1a}
+button.bo{border-color:#fa0;color:#fa0}button.bo:hover{background:#fa0;color:#0a0a1a}
+.sep{width:1px;height:24px;background:#333;margin:0 6px}
+#sb{position:fixed;right:10px;top:50px;width:400px;bottom:55px;background:rgba(10,10,26,0.92);border:1px solid #333;padding:0;overflow:hidden;font-size:11px;z-index:10;border-radius:4px;display:flex;flex-direction:column}
+.tb{display:flex;border-bottom:1px solid #333;flex-shrink:0}
+.tb div{padding:6px 10px;cursor:pointer;color:#888;border-bottom:2px solid transparent;font-size:11px}
+.tb div.a{color:#0ff;border-bottom-color:#0ff}
+.tc{display:none;padding:8px;overflow-y:auto;flex:1}.tc.a{display:block}
+.lk{color:#0f0}.ld{color:#666}.le{color:#ff0}.lr{color:#f44}.lt{color:#0ff;font-weight:bold}.lg{color:#4af}.lh{color:#fa0;font-style:italic}.hd{color:#f0a;font-weight:bold;margin-bottom:4px}
+#st{position:fixed;left:10px;top:50px;width:220px;background:rgba(10,10,26,0.92);border:1px solid #333;padding:10px;z-index:10;border-radius:4px;font-size:11px}
+.sh{color:#0ff;font-weight:bold;margin-bottom:6px}.sr{margin:3px 0}.sv{color:#fff;float:right}
+.bf{height:6px;background:#0ff;border-radius:3px;transition:width 0.3s}.bb{height:6px;background:#222;border-radius:3px;margin-top:4px}
+#ov{position:fixed;top:0;left:0;right:0;bottom:0;display:none;z-index:5;pointer-events:none;align-items:center;justify-content:center}
+#ov.show{display:flex}
+#ov-in{text-align:center;padding:30px 60px;background:rgba(10,10,26,0.85);border:2px solid #0ff;border-radius:12px}
+#ov.death #ov-in{border-color:#f44}#ov.ok #ov-in{border-color:#0f0}
+#ov-t{font-size:28px;font-weight:bold}#ov-d{font-size:16px;margin-top:8px;color:#aaa}
 </style>
 </head>
 <body>
 <div id="ui">
-  <div>
-    <span class="gen" id="gen-display">Gen 0 (Baseline)</span>
-  </div>
-  <div>
-    <span class="score" id="score-display">Score: 0</span>
-  </div>
-  <div>
-    <span class="info" id="speed-display">Speed: 5.0</span>
-  </div>
+  <div><div class="gen" id="gd">Karpathy Framework + Gemini</div><div class="ep" id="ed">Ready -- run server.py then click Start</div></div>
+  <div><span class="score" id="sd">Score: 0</span></div>
+  <div><span class="info" id="spd">Speed: 5.0</span> <span class="info" id="td" style="margin-left:12px">Tick: 0</span></div>
 </div>
-
-<div id="progress-bar">
-  <div class="header" style="color: #0ff;">Evolution Progress</div>
-  <div>Best mean: <span id="best-mean">0</span></div>
-  <div>Target: 50+ all games</div>
-  <div class="bar-bg"><div class="bar-fill" id="progress-fill" style="width: 0%"></div></div>
-  <div style="margin-top:6px;">Games >=50: <span id="pct50">0%</span></div>
+<div id="st">
+  <div class="sh">Evolution Progress</div>
+  <div class="sr">Best mean:<span class="sv" id="sm">--</span></div>
+  <div class="sr">Best min:<span class="sv" id="sn">--</span></div>
+  <div class="sr">Generation:<span class="sv" id="sg">0</span></div>
+  <div class="sr">Kept / Discarded:<span class="sv" id="skd">0 / 0</span></div>
+  <div style="margin-top:6px">Target: all 20 games >= 50</div>
+  <div class="bb"><div class="bf" id="sbar" style="width:0%"></div></div>
+  <div class="sr" style="margin-top:4px">Games >=50:<span class="sv" id="sp">--</span></div>
+  <hr style="border-color:#333;margin:8px 0">
+  <div class="sh">Current Game</div>
+  <div class="sr">Seed:<span class="sv" id="cs">--</span></div>
+  <div class="sr">Score:<span class="sv" id="cc">0</span></div>
+  <div class="sr">Action:<span class="sv" id="ca">--</span></div>
+  <div class="sr">Next obs:<span class="sv" id="co">--</span></div>
+  <hr style="border-color:#333;margin:8px 0">
+  <div class="sh">Git</div>
+  <div class="sr" id="gi" style="color:#0f0">--</div>
 </div>
-
-<div id="log">
-  <div class="header">Evolution Log</div>
+<div id="sb">
+  <div class="tb">
+    <div class="a" data-t="log">Log</div>
+    <div data-t="gem">Gemini</div>
+    <div data-t="diff">Diff</div>
+    <div data-t="dth">Deaths</div>
+    <div data-t="hist">History</div>
+  </div>
+  <div class="tc a" id="t-log"><div class="hd">Evolution Log</div></div>
+  <div class="tc" id="t-gem"><div class="hd">Gemini Reasoning</div><pre id="go" style="white-space:pre-wrap;font-size:11px">Waiting...</pre></div>
+  <div class="tc" id="t-diff"><div class="hd">Strategy Diff</div><pre id="do2" style="white-space:pre-wrap;font-size:11px"></pre></div>
+  <div class="tc" id="t-dth"><div class="hd">Death Analysis</div><pre id="da" style="white-space:pre-wrap;font-size:11px">No data</pre></div>
+  <div class="tc" id="t-hist"><div class="hd">Experiment History</div><pre id="ho" style="white-space:pre-wrap;font-size:11px"></pre></div>
 </div>
-
+<div id="ov"><div id="ov-in"><div id="ov-t"></div><div id="ov-d"></div></div></div>
 <div id="controls">
-  <button id="btn-start" class="active">Start Evolution</button>
-  <button id="btn-pause">Pause</button>
-  <button id="btn-speed1">1x</button>
-  <button id="btn-speed5">5x</button>
-  <button id="btn-speed20">20x</button>
-  <button id="btn-watch">Watch Best AI</button>
+  <button id="btn-go" class="bg">Start Evolution</button>
+  <button id="btn-p">Pause</button>
+  <button id="btn-s" class="bo">Step (1 tick)</button>
+  <div class="sep"></div>
+  <span class="cl">Game speed:</span>
+  <button class="gs" data-v="0.05">Ultra Slow</button>
+  <button class="gs" data-v="0.15">Slow</button>
+  <button class="gs active" data-v="0.5">0.5x</button>
+  <button class="gs" data-v="1">1x</button>
+  <button class="gs" data-v="3">3x</button>
+  <button class="gs" data-v="300">MAX</button>
+  <div class="sep"></div>
+  <span class="cl">Pause between games:</span>
+  <button class="pg" data-v="500">0.5s</button>
+  <button class="pg active" data-v="2000">2s</button>
+  <button class="pg" data-v="4000">4s</button>
 </div>
-
-<canvas id="game"></canvas>
-
+<canvas id="cv"></canvas>
 <script>
-// ============================================================
-// Game Engine (mirrors Python version)
-// ============================================================
-class Obstacle {
-  constructor(x, width, height, type, speedMult = 1.0) {
-    this.x = x; this.width = width; this.height = height;
-    this.type = type; this.speedMult = speedMult;
-  }
-}
-
-class RunnerGame {
-  constructor(seed) {
-    this.rng = this.makeRng(seed || 0);
-    this.playerX = 50; this.playerY = 0; this.playerVy = 0;
-    this.playerW = 20; this.playerH = 40;
-    this.jumping = false; this.ducking = false; this.canDJ = true;
-    this.score = 0; this.distance = 0; this.speed = 5;
-    this.baseSpeed = 5; this.gravity = -0.8; this.jumpPower = 13;
-    this.gameOver = false; this.tick = 0;
-    this.obstacles = [];
-    this.generateObstacles();
-  }
-
-  makeRng(seed) {
-    // Simple seeded RNG (mulberry32)
-    let s = seed | 0;
-    return () => { s |= 0; s = s + 0x6D2B79F5 | 0;
-      let t = Math.imul(s ^ s >>> 15, 1 | s);
-      t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
-      return ((t ^ t >>> 14) >>> 0) / 4294967296; };
-  }
-
-  rngUniform(a, b) { return a + this.rng() * (b - a); }
-  rngChoice(arr) { return arr[Math.floor(this.rng() * arr.length)]; }
-  rngWeighted(items, weights) {
-    let sum = weights.reduce((a, b) => a + b, 0);
-    let r = this.rng() * sum, acc = 0;
-    for (let i = 0; i < items.length; i++) { acc += weights[i]; if (r < acc) return items[i]; }
-    return items[items.length - 1];
-  }
-
-  generateObstacles() {
-    let x = 250;
-    for (let i = 0; i < 200; i++) {
-      let p = Math.min(i / 80, 1);
-      let type;
-      if (i < 8) type = 'ground';
-      else if (i < 20) type = this.rngChoice(['ground', 'ground', 'low']);
-      else type = this.rngWeighted(['ground', 'low', 'high'],
-        [0.35 - 0.1*p, 0.35, 0.30 + 0.1*p]);
-
-      let w, h;
-      if (type === 'ground') { w = this.rngUniform(15, 25+8*p); h = this.rngUniform(20, 35+15*p); }
-      else if (type === 'low') { w = this.rngUniform(20, 30+10*p); h = this.rngUniform(15, 28); }
-      else { w = this.rngUniform(20, 30); h = this.rngUniform(22, 30); }
-
-      let minG = Math.max(100, 180 - 80*p), maxG = Math.max(150, 280 - 100*p);
-      let gap = this.rngUniform(minG, maxG);
-      let sm = 1.0;
-      if (i > 25 && this.rng() < 0.12*p) sm = this.rngUniform(1.05, 1.2+0.15*p);
-
-      this.obstacles.push(new Obstacle(x, w, h, type, sm));
-      x += w + gap;
-    }
-  }
-
-  getNextObs() {
-    let px = this.distance + this.playerX;
-    for (let o of this.obstacles) if (o.x + o.width > px) return o;
-    return null;
-  }
-
-  step(action) {
-    if (this.gameOver) return this.info();
-    this.tick++;
-    this.speed = this.baseSpeed + Math.min(this.score * 0.02, 2.5);
-    let next = this.getNextObs();
-    if (next) this.speed *= next.speedMult;
-
-    if (action === 'jump' && !this.jumping) {
-      this.playerVy = this.jumpPower; this.jumping = true;
-      this.canDJ = true; this.ducking = false; this.playerH = 40;
-    } else if (action === 'double_jump' && this.jumping && this.canDJ && this.playerY > 3) {
-      this.playerVy = this.jumpPower * 0.75; this.canDJ = false;
-    } else if (action === 'duck' && !this.jumping) {
-      this.ducking = true; this.playerH = 20;
-    } else if (action === 'none' && this.ducking) {
-      this.ducking = false; this.playerH = 40;
-    }
-
-    if (this.jumping) {
-      this.playerVy += this.gravity; this.playerY += this.playerVy;
-      if (this.playerY <= 0) {
-        this.playerY = 0; this.playerVy = 0; this.jumping = false; this.canDJ = true;
-        this.playerH = this.ducking ? 20 : 40;
-      }
-    }
-
-    this.distance += this.speed;
-    let pl = this.distance + this.playerX, pr = pl + this.playerW;
-    let pt = this.playerY + this.playerH;
-
-    for (let o of this.obstacles) {
-      if (o.x > pr + 10) break;
-      if (o.x + o.width < pl) continue;
-      if (o.type === 'high') {
-        if (pt > o.height && this.playerY < o.height) { this.gameOver = true; return this.info(); }
-      } else {
-        if (this.playerY < o.height) { this.gameOver = true; return this.info(); }
-      }
-    }
-
-    let sc = 0;
-    for (let o of this.obstacles) { if (o.x + o.width < pl) sc++; else break; }
-    this.score = sc;
-    return this.info();
-  }
-
-  info() {
-    let next = this.getNextObs();
-    return {
-      score: this.score, distance: this.distance,
-      playerY: this.playerY, playerVy: this.playerVy,
-      jumping: this.jumping, ducking: this.ducking, canDJ: this.canDJ,
-      speed: this.speed, gameOver: this.gameOver, tick: this.tick,
-      nextType: next ? next.type : null,
-      nextDist: next ? next.x - this.distance - this.playerX : 999,
-      nextH: next ? next.height : 0, nextW: next ? next.width : 0,
-    };
-  }
-}
-
-// ============================================================
-// AI Player
-// ============================================================
-class Strategy {
-  constructor(params = {}) {
-    this.jumpTrigger = params.jumpTrigger ?? 85;
-    this.jumpMaxDist = params.jumpMaxDist ?? 140;
-    this.emergencyDist = params.emergencyDist ?? 15;
-    this.speedFactor = params.speedFactor ?? 2.5;
-    this.djHeightFrac = params.djHeightFrac ?? 0.9;
-    this.djMinTicks = params.djMinTicks ?? 6;
-    this.djMaxDist = params.djMaxDist ?? 80;
-    this.duckTrigger = params.duckTrigger ?? 90;
-    this.duckRelease = params.duckRelease ?? -25;
-    this.duckSpeedFactor = params.duckSpeedFactor ?? 1.5;
-  }
-
-  mutate(rng, rate = 0.3, strength = 0.15) {
-    let n = new Strategy(this);
-    const bounds = {
-      jumpTrigger: [30, 200], jumpMaxDist: [60, 300], emergencyDist: [5, 50],
-      speedFactor: [0, 8], djHeightFrac: [0.3, 1.5], djMinTicks: [2, 15],
-      djMaxDist: [30, 150], duckTrigger: [40, 200], duckRelease: [-60, 0],
-      duckSpeedFactor: [0, 5],
-    };
-    for (let [k, [lo, hi]] of Object.entries(bounds)) {
-      if (rng() < rate) {
-        let v = n[k];
-        if (k === 'djMinTicks') v = Math.max(lo, Math.min(hi, v + Math.floor((rng()-0.5)*5)));
-        else v = Math.max(lo, Math.min(hi, v + gaussRng(rng) * strength * (hi - lo)));
-        n[k] = v;
-      }
-    }
-    return n;
-  }
-}
-
-function gaussRng(rng) {
-  let u = 0, v = 0;
-  while (u === 0) u = rng();
-  while (v === 0) v = rng();
-  return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
-}
-
-class AIPlayer {
-  constructor(strategy) { this.s = strategy; this.jumpTick = -100; }
-  decide(info, game) {
-    if (info.gameOver) return 'none';
-    let { nextType: t, nextDist: d, nextH: h, speed, playerY: y,
-          jumping, ducking, canDJ, tick } = info;
-    if (!t) return 'none';
-    let adjJ = this.s.jumpTrigger + speed * this.s.speedFactor;
-    let adjD = this.s.duckTrigger + speed * this.s.duckSpeedFactor;
-
-    if (t === 'high') {
-      if (!jumping && d < adjD && d > this.s.duckRelease) return 'duck';
-      if (ducking && d < this.s.duckRelease) return 'none';
-      if (ducking) return 'duck';
-      return 'none';
-    }
-
-    if (!jumping) {
-      if (d < adjJ && d > this.s.emergencyDist) { this.jumpTick = tick; return 'jump'; }
-      if (d < this.s.emergencyDist && d > 0) { this.jumpTick = tick; return 'jump'; }
-    }
-    if (jumping && canDJ) {
-      if (tick - this.jumpTick >= this.s.djMinTicks && d < this.s.djMaxDist) {
-        if (y < h * this.s.djHeightFrac) return 'double_jump';
-      }
-    }
-    return 'none';
-  }
-}
-
-// ============================================================
-// Evolution Engine
-// ============================================================
-function playGame(strategy, seed) {
-  let game = new RunnerGame(seed);
-  let player = new AIPlayer(strategy);
-  let info = game.info();
-  while (!info.gameOver && info.tick < 50000) {
-    info = game.step(player.decide(info, game));
-  }
-  return info.score;
-}
-
-function evalStrategy(strategy, seeds) {
-  let scores = seeds.map(s => playGame(strategy, s));
-  return {
-    mean: scores.reduce((a,b) => a+b, 0) / scores.length,
-    min: Math.min(...scores), max: Math.max(...scores),
-    scores, allAbove50: scores.every(s => s >= 50),
-    pct50: scores.filter(s => s >= 50).length / scores.length * 100,
-  };
-}
-
-// ============================================================
-// Rendering
-// ============================================================
-const canvas = document.getElementById('game');
-const ctx = canvas.getContext('2d');
-let W, H, groundY;
-
-function resize() {
-  W = canvas.width = window.innerWidth;
-  H = canvas.height = window.innerHeight;
-  groundY = H - 100;
-}
-window.addEventListener('resize', resize);
-resize();
-
-const COLORS = {
-  ground: '#2a2a4a', sky: '#0a0a1a',
-  player: '#0ff', playerDuck: '#0aa',
-  obsGround: '#f44', obsLow: '#fa0', obsHigh: '#a0f',
-  trail: 'rgba(0,255,255,0.03)',
+// === API (real server.py endpoints) ===
+async function api(m,p,b){const o={method:m,headers:{'Content-Type':'application/json'}};if(b)o.body=JSON.stringify(b);return(await fetch(p,o)).json();}
+const A={
+  getSt:()=>api('GET','/api/strategy'),
+  setSt:s=>api('POST','/api/strategy',s),
+  eval:()=>api('POST','/api/evaluate'),
+  reason:d=>api('POST','/api/reason',d),
+  commit:m=>api('POST','/api/git/commit',{message:m}),
+  reset:()=>api('POST','/api/git/reset'),
+  branch:n=>api('POST','/api/git/branch/create',{name:n}),
+  glog:()=>api('GET','/api/git/log'),
+  getR:()=>api('GET','/api/resources'),
+  setR:c=>api('POST','/api/resources',{content:c}),
+  addT:l=>api('POST','/api/results/append',{line:l}),
+  getT:()=>api('GET','/api/results'),
 };
 
-function drawGame(game, info) {
-  // Sky gradient
-  let grad = ctx.createLinearGradient(0, 0, 0, H);
-  grad.addColorStop(0, '#050515');
-  grad.addColorStop(1, '#0a0a2a');
-  ctx.fillStyle = grad;
-  ctx.fillRect(0, 0, W, H);
+// === Game Engine (JS visual playback only) ===
+class O{constructor(x,w,h,t,s=1){this.x=x;this.width=w;this.height=h;this.type=t;this.speedMult=s;}}
+class G{
+  constructor(seed){this.seed=seed;this.r=this.mr(seed||0);this.playerX=50;this.playerY=0;this.playerVy=0;this.playerW=20;this.playerH=40;this.jumping=false;this.ducking=false;this.canDJ=true;this.score=0;this.distance=0;this.speed=5;this.baseSpeed=5;this.gravity=-0.8;this.jumpPower=13;this.gameOver=false;this.tick=0;this.lastAction='none';this.obstacles=[];this.gen();}
+  mr(s){s|=0;return()=>{s|=0;s=s+0x6D2B79F5|0;let t=Math.imul(s^s>>>15,1|s);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+  ru(a,b){return a+this.r()*(b-a);}rc(a){return a[Math.floor(this.r()*a.length)];}
+  rw(i,w){let s=w.reduce((a,b)=>a+b,0),r2=this.r()*s,a=0;for(let j=0;j<i.length;j++){a+=w[j];if(r2<a)return i[j];}return i[i.length-1];}
+  gen(){let x=250;for(let i=0;i<200;i++){let p=Math.min(i/80,1),t;if(i<8)t='ground';else if(i<20)t=this.rc(['ground','ground','low']);else t=this.rw(['ground','low','high'],[.35-.1*p,.35,.3+.1*p]);let w,h;if(t==='ground'){w=this.ru(15,25+8*p);h=this.ru(20,35+15*p);}else if(t==='low'){w=this.ru(20,30+10*p);h=this.ru(15,28);}else{w=this.ru(20,30);h=this.ru(22,30);}let g=this.ru(Math.max(100,180-80*p),Math.max(150,280-100*p));let sm=1;if(i>25&&this.r()<.12*p)sm=this.ru(1.05,1.2+.15*p);this.obstacles.push(new O(x,w,h,t,sm));x+=w+g;}}
+  next(){let px=this.distance+this.playerX;for(let o of this.obstacles)if(o.x+o.width>px)return o;return null;}
+  step(a){if(this.gameOver)return;this.lastAction=a;this.tick++;this.speed=this.baseSpeed+Math.min(this.score*.02,2.5);let n=this.next();if(n)this.speed*=n.speedMult;if(a==='jump'&&!this.jumping){this.playerVy=this.jumpPower;this.jumping=true;this.canDJ=true;this.ducking=false;this.playerH=40;}else if(a==='double_jump'&&this.jumping&&this.canDJ&&this.playerY>3){this.playerVy=this.jumpPower*.75;this.canDJ=false;}else if(a==='duck'&&!this.jumping){this.ducking=true;this.playerH=20;}else if(a==='none'&&this.ducking){this.ducking=false;this.playerH=40;}if(this.jumping){this.playerVy+=this.gravity;this.playerY+=this.playerVy;if(this.playerY<=0){this.playerY=0;this.playerVy=0;this.jumping=false;this.canDJ=true;this.playerH=this.ducking?20:40;}}let nd=this.distance+this.speed,pl=nd+this.playerX,pr=pl+this.playerW,pt=this.playerY+this.playerH;for(let o of this.obstacles){if(o.x>pr+10)break;if(o.x+o.width<pl)continue;if(o.type==='high'){if(pt>o.height&&this.playerY<o.height){this.distance=nd;this.gameOver=true;return;}}else{if(this.playerY<o.height){this.distance=Math.max(this.distance,Math.min(nd,o.x-this.playerX-this.playerW+1));this.gameOver=true;return;}}}this.distance=nd;let sc=0;for(let o of this.obstacles){if(o.x+o.width<pl)sc++;else break;}this.score=sc;}
+}
+class AI{
+  constructor(p){this.p=p;this.jt=-100;}
+  decide(g){if(g.gameOver)return'none';let n=g.next();if(!n)return'none';let p=this.p,d=n.x-g.distance-g.playerX,t=n.type,h=n.height,sp=g.speed;let aj=p.jump_trigger+sp*p.speed_factor,ad=p.duck_trigger+sp*p.duck_speed_factor;if(t==='high'){if(!g.jumping&&d<ad&&d>p.duck_release)return'duck';if(g.ducking&&d<p.duck_release)return'none';if(g.ducking)return'duck';return'none';}if(!g.jumping){if(d<aj&&d>p.emergency_dist){this.jt=g.tick;return'jump';}if(d<p.emergency_dist&&d>0){this.jt=g.tick;return'jump';}}if(g.jumping&&g.canDJ&&g.tick-this.jt>=p.dj_min_ticks&&d<p.dj_max_dist&&g.playerY<h*p.dj_height_frac)return'double_jump';return'none';}
+}
 
-  // Stars
-  let rng = game.makeRng(12345);
-  ctx.fillStyle = 'rgba(255,255,255,0.4)';
-  for (let i = 0; i < 60; i++) {
-    ctx.fillRect(rng()*W, rng()*groundY, 1.5, 1.5);
+// === Render ===
+const cv=document.getElementById('cv'),cx=cv.getContext('2d');
+let W,H,gY;function rsz(){W=cv.width=innerWidth;H=cv.height=innerHeight;gY=H-100;}addEventListener('resize',rsz);rsz();
+function draw(g,df=0){
+  let gr=cx.createLinearGradient(0,0,0,H);gr.addColorStop(0,'#050515');gr.addColorStop(1,'#0a0a2a');cx.fillStyle=gr;cx.fillRect(0,0,W,H);
+  if(df>0){cx.fillStyle=`rgba(255,50,50,${df*0.25})`;cx.fillRect(0,0,W,H);}
+  let sr=g.mr(12345);cx.fillStyle='rgba(255,255,255,0.4)';for(let i=0;i<60;i++)cx.fillRect(sr()*W,sr()*gY,1.5,1.5);
+  cx.fillStyle='#1a1a3a';cx.fillRect(0,gY,W,H-gY);cx.strokeStyle='#333';cx.lineWidth=2;cx.beginPath();cx.moveTo(0,gY);cx.lineTo(W,gY);cx.stroke();
+  let cm=g.distance,sc=2,nO=g.next();
+  for(let o of g.obstacles){let sx=(o.x-cm)*sc/2+50;if(sx>W+50||sx+o.width*sc<-50)continue;let sw=o.width*sc/2,isN=o===nO;
+    if(o.type==='high'){cx.fillStyle=isN?'#c040ff':'#8020c0';let ch=o.height*sc/2;cx.fillRect(sx,0,sw,gY-ch);cx.fillStyle=isN?'rgba(192,64,255,0.3)':'rgba(128,32,192,0.15)';cx.fillRect(sx,gY-ch,sw,ch);cx.fillStyle=isN?'#f0f':'#a0f';cx.font=isN?'bold 11px monospace':'9px monospace';cx.fillText('DUCK',sx+2,gY-ch+14);}
+    else{let sh=o.height*sc/2;cx.fillStyle=o.type==='ground'?(isN?'#f55':'#c33'):(isN?'#fa3':'#c80');cx.fillRect(sx,gY-sh,sw,sh);if(isN){cx.shadowColor=o.type==='ground'?'#f44':'#fa0';cx.shadowBlur=12;cx.fillRect(sx,gY-sh,sw,2);cx.shadowBlur=0;}}
+    if(isN){cx.strokeStyle='rgba(255,255,0,0.6)';cx.lineWidth=2;cx.setLineDash([4,4]);let sh=o.height*sc/2;cx.strokeRect(sx-1,gY-sh-1,sw+2,sh+2);cx.setLineDash([]);cx.lineWidth=1;}}
+  let px=50+g.playerX*sc/2,py=gY-g.playerY*sc/2,pw=g.playerW*sc/2,ph=g.playerH*sc/2;
+  cx.fillStyle='rgba(0,255,255,0.03)';for(let i=1;i<=8;i++)cx.fillRect(px-i*4,py-ph,pw,ph);
+  let pc=g.gameOver?'#f44':(g.ducking?'#0aa':'#0ff');cx.fillStyle=pc;cx.shadowColor=pc;cx.shadowBlur=g.gameOver?25:15;cx.fillRect(px,py-ph,pw,ph);cx.shadowBlur=0;
+  if(g.gameOver&&df>0){let c2=px+pw/2,cy=py-ph/2;cx.strokeStyle='#f44';cx.lineWidth=3;cx.beginPath();cx.moveTo(c2-10,cy-10);cx.lineTo(c2+10,cy+10);cx.moveTo(c2+10,cy-10);cx.lineTo(c2-10,cy+10);cx.stroke();cx.strokeStyle=`rgba(255,68,68,${df*0.8})`;cx.lineWidth=2;cx.beginPath();cx.arc(c2,cy,20+(1-df)*30,0,Math.PI*2);cx.stroke();cx.fillStyle='#f44';cx.font='bold 14px monospace';cx.fillText('COLLISION!',c2-45,cy-ph/2-18);let k=g.next();if(k){cx.fillStyle='#f88';cx.font='11px monospace';cx.fillText(`${k.type} h=${Math.round(k.height)} | y=${Math.round(g.playerY)} ${g.jumping?'jumping':g.ducking?'ducking':'standing'}`,c2-80,cy+ph/2+16);}cx.lineWidth=1;}
+  if(!g.gameOver){cx.fillStyle='#000';let ey=py-ph+ph*.25;cx.fillRect(px+pw*.5,ey,3,3);cx.fillRect(px+pw*.75,ey,3,3);}
+  if(!g.gameOver&&g.lastAction&&g.lastAction!=='none'){cx.fillStyle=g.lastAction==='duck'?'#a0f':g.lastAction==='double_jump'?'#ff0':'#0f0';cx.font='bold 10px monospace';cx.fillText(g.lastAction==='double_jump'?'DBL JUMP':g.lastAction.toUpperCase(),px-4,py-ph-8);}
+  if(g.jumping){cx.strokeStyle='rgba(0,255,255,0.3)';cx.setLineDash([3,3]);cx.beginPath();cx.moveTo(px+pw/2,py);cx.lineTo(px+pw/2,gY);cx.stroke();cx.setLineDash([]);cx.fillStyle='rgba(0,255,255,0.6)';cx.font='9px monospace';cx.fillText(`y:${Math.round(g.playerY)}`,px+pw+4,py-ph/2);}
+  let bW=W-540,bX=230,bY=gY+30;cx.fillStyle='#111';cx.fillRect(bX,bY,bW,8);let s2=Math.min(g.score/50,1);cx.fillStyle=g.score>=50?'#0f0':g.score>=30?'#ff0':'#f44';cx.fillRect(bX,bY,bW*s2,8);cx.fillStyle='#888';cx.font='9px monospace';cx.fillText('Target:50',bX+bW-45,bY+20);cx.fillText(`Score:${g.score}`,bX,bY+20);
+}
+function drawW(){
+  let gr=cx.createLinearGradient(0,0,0,H);gr.addColorStop(0,'#050515');gr.addColorStop(1,'#0a0a2a');cx.fillStyle=gr;cx.fillRect(0,0,W,H);
+  cx.fillStyle='#1a1a3a';cx.fillRect(0,gY,W,H-gY);cx.strokeStyle='#333';cx.lineWidth=2;cx.beginPath();cx.moveTo(0,gY);cx.lineTo(W,gY);cx.stroke();
+  cx.textAlign='center';cx.fillStyle='#0ff';cx.font='bold 36px monospace';cx.fillText('Self-Improving Runner',W/2,H/2-80);
+  cx.fillStyle='#f0a';cx.font='18px monospace';cx.fillText("Karpathy's Autoresearch + Gemini Reasoning",W/2,H/2-40);
+  cx.fillStyle='#888';cx.font='14px monospace';cx.fillText('Gemini analyzes deaths, proposes parameter changes',W/2,H/2);
+  cx.fillText('Real strategy.json, real evaluate.py, real git commits',W/2,H/2+22);
+  cx.fillText('All 20 evaluation games shown visually per generation',W/2,H/2+44);
+  cx.fillStyle='#0f0';cx.font='bold 16px monospace';cx.fillText('Click "Start Evolution" to begin',W/2,H/2+85);
+  cx.fillStyle='#f44';cx.font='12px monospace';cx.fillText('Requires: python server.py running in terminal',W/2,H/2+115);
+  cx.textAlign='left';
+}
+
+// === State ===
+let tpf=0.5,tAc=0,pMs=2000,gen=0,kept=0,disc=0,bM=0,bN=0;
+let bS=null,vG=null,vA=null,dF=0,evolving=false,paused=false;
+const $=id=>document.getElementById(id);
+function lg(t,c=''){let d=document.createElement('div');d.className=c;d.textContent=t;let e=$('t-log');e.appendChild(d);if(e.children.length>500)e.removeChild(e.children[1]);e.scrollTop=e.scrollHeight;}
+function ov(t,d,type,dur){$('ov-t').textContent=t;$('ov-d').textContent=d;$('ov').className='show '+type;if(dur>0)setTimeout(()=>{$('ov').className='';},dur);}
+function sleep(ms){return new Promise(r=>setTimeout(r,ms));}
+function uS(){$('sg').textContent=gen;$('skd').textContent=`${kept} / ${disc}`;$('sm').textContent=bM?bM.toFixed(1):'--';$('sn').textContent=bN||'--';$('sbar').style.width=Math.min(100,(bN/50)*100)+'%';}
+function uH(g){$('sd').textContent=`Score: ${g.score}`;$('spd').textContent=`Speed: ${g.speed.toFixed(1)}`;$('td').textContent=`Tick: ${g.tick}`;$('cs').textContent=g.seed;$('cc').textContent=g.score;$('ca').textContent=g.lastAction||'--';let n=g.next();$('co').textContent=n?`${n.type} @ ${Math.round(n.x-g.distance-g.playerX)}`:'--';}
+function sDiff(o,n){let e=$('do2'),h='';for(let k of Object.keys(n)){let ov2=o?o[k]:n[k],nv=n[k];if(ov2!==nv)h+=`<span style="color:#f44">- ${k}: ${typeof ov2==='number'?ov2.toFixed(2):ov2}</span>\n<span style="color:#0f0">+ ${k}: ${typeof nv==='number'?nv.toFixed(2):nv}</span>\n`;else h+=`<span style="color:#555">  ${k}: ${typeof nv==='number'?nv.toFixed(2):nv}</span>\n`;}e.innerHTML=h;}
+function sDth(d){let e=$('da');if(!d||!d.death_by_type){e.textContent='No data';return;}let t=`Deaths: ground=${d.death_by_type.ground||0} low=${d.death_by_type.low||0} high=${d.death_by_type.high||0}\n\nWorst 5:\n`;for(let x of(d.worst_5_deaths||[]).slice(0,5))t+=`  seed=${x.seed} score=${x.score} ${x.obstacle_type} h=${x.obstacle_height} py=${x.player_y_at_death} ${x.was_jumping?'jumping':x.was_ducking?'ducking':'standing'} spd=${x.speed_at_death}\n`;t+=`\nScores: [${(d.scores||[]).join(', ')}]`;e.textContent=t;}
+
+// === Play one visual game ===
+async function playV(params,seed,label){
+  vG=new G(seed);vA=new AI(params);dF=0;
+  $('ed').textContent=label;$('cs').textContent=seed;
+  while(!vG.gameOver&&vG.tick<50000){
+    if(paused){await sleep(100);continue;}
+    tAc+=tpf;let ticks=Math.floor(tAc);tAc-=ticks;
+    for(let i=0;i<ticks&&!vG.gameOver;i++)vG.step(vA.decide(vG));
+    draw(vG);uH(vG);await new Promise(r=>requestAnimationFrame(r));
+  }
+  dF=1;draw(vG,1);uH(vG);$('sd').textContent=`Final: ${vG.score}`;
+  ov(`Game Over - Score: ${vG.score}`,vG.score>=50?'Target met!':'Below target','death',Math.min(pMs,2000));
+  let t0=Date.now();while(Date.now()-t0<pMs){dF=Math.max(0,1-(Date.now()-t0)/1000);draw(vG,dF);await new Promise(r=>requestAnimationFrame(r));}
+  $('ov').className='';return vG.score;
+}
+
+// === THE REAL KARPATHY LOOP + GEMINI ===
+async function run(){
+  evolving=true;paused=false;gen=0;kept=0;disc=0;bM=0;bN=0;
+  $('t-log').innerHTML='<div class="hd">Evolution Log (Karpathy + Gemini)</div>';
+  $('go').textContent='Waiting...';
+  let seeds=Array.from({length:20},(_,i)=>i);
+
+  // 1. Read strategy.json
+  lg('Reading strategy.json...','');
+  let st=await A.getSt();bS={...st};
+  lg(`Loaded: jump_trigger=${st.jump_trigger}, speed_factor=${st.speed_factor}`,'');
+  sDiff(null,st);
+
+  // 2. Git branch
+  let tag=new Date().toISOString().slice(5,16).replace(/[-:T]/g,'');
+  let br=`runner-opt/${tag}`;lg(`Creating branch: ${br}`,'');
+  let bres=await A.branch(br);
+  lg(bres.ok?`Branch: ${br}`:`Branch: ${bres.error}`,bres.ok?'lk':'lr');
+  $('gi').textContent=br;
+
+  // 3. Baseline eval
+  $('gd').textContent='BASELINE - Running evaluate.py...';
+  lg('Running baseline: python evaluate.py (20 games)...','');
+  let baseR=await A.eval();let bm=baseR.metrics;
+  bM=bm.mean_score||0;bN=bm.min_score||0;
+  lg(`Baseline: mean=${bM.toFixed(1)} min=${bN} max=${bm.max_score||0}`,'lk');
+  lg(`Scores: [${(baseR.details.scores||[]).join(', ')}]`,'');
+  sDth(baseR.details);uS();$('sp').textContent=(bm.pct_above_50||0).toFixed(0)+'%';
+  await A.addT(`baseline\t${bM.toFixed(1)}\t${bN}\tkeep\tbaseline`);
+
+  // 4. Play ALL 20 baseline games visually
+  lg('Playing all 20 baseline games...','le');
+  for(let i=0;i<seeds.length;i++){
+    if(!evolving)return;
+    $('gd').textContent=`BASELINE - Game ${i+1} of 20`;
+    ov(`Baseline - Game ${i+1}/20`,`Seed ${seeds[i]}`,'ok',600);await sleep(600);
+    let sc=await playV(st,seeds[i],`Baseline - Game ${i+1}/20 (seed ${seeds[i]})`);
+    lg(`  Seed ${seeds[i]}: score=${sc}${sc>=50?'':' (BELOW)'}`,sc>=50?'':'lr');
   }
 
-  // Ground
-  ctx.fillStyle = '#1a1a3a';
-  ctx.fillRect(0, groundY, W, H - groundY);
-  ctx.strokeStyle = '#333';
-  ctx.lineWidth = 2;
-  ctx.beginPath(); ctx.moveTo(0, groundY); ctx.lineTo(W, groundY); ctx.stroke();
+  // 5. EXPERIMENT LOOP
+  let res='';try{let r=await A.getR();res=r.content||'';}catch(e){}
 
-  // Grid lines on ground
-  ctx.strokeStyle = 'rgba(0,255,255,0.05)';
-  for (let i = 0; i < 20; i++) {
-    let x = ((i * 80 - game.distance * 0.5) % (W + 80) + W + 80) % (W + 80) - 40;
-    ctx.beginPath(); ctx.moveTo(x, groundY); ctx.lineTo(x, H); ctx.stroke();
-  }
+  while(evolving){
+    if(paused){await sleep(200);continue;}
+    gen++;
 
-  let camX = game.distance;
-  let scale = 2.0;
+    // 5a. GEMINI REASONING
+    $('gd').textContent=`Gen ${gen} - Asking Gemini...`;
+    $('ed').textContent=`Gen ${gen}: Gemini analyzing failures...`;
+    lg(`\n=== Gen ${gen} ===`,'hd');lg(`Asking Gemini...`,'lg');
 
-  // Obstacles
-  for (let obs of game.obstacles) {
-    let sx = (obs.x - camX) * scale / 2 + 50;
-    if (sx > W + 50 || sx + obs.width * scale < -50) continue;
+    let lr;try{lr=await A.getLastRun();}catch(e){lr=baseR.details;}
+    let rr;try{rr=await A.reason({strategy:bS,last_run:lr,resources:res});}catch(e){lg(`Gemini error: ${e.message}`,'lr');await sleep(2000);continue;}
+    if(!rr.ok){lg(`Gemini error: ${rr.error}`,'lr');await sleep(2000);continue;}
 
-    let sw = obs.width * scale / 2;
-    if (obs.type === 'high') {
-      // High obstacle: hanging bar
-      ctx.fillStyle = COLORS.obsHigh;
-      let clearH = obs.height * scale / 2;
-      ctx.fillRect(sx, 0, sw, groundY - clearH);
-      ctx.fillStyle = 'rgba(160,0,255,0.3)';
-      ctx.fillRect(sx, groundY - clearH, sw, clearH);
-      // Label
-      ctx.fillStyle = '#a0f';
-      ctx.font = '9px monospace';
-      ctx.fillText('DUCK', sx + 2, groundY - clearH + 12);
-    } else {
-      let sh = obs.height * scale / 2;
-      ctx.fillStyle = obs.type === 'ground' ? COLORS.obsGround : COLORS.obsLow;
-      ctx.fillRect(sx, groundY - sh, sw, sh);
-      // Glow
-      ctx.shadowColor = obs.type === 'ground' ? '#f44' : '#fa0';
-      ctx.shadowBlur = 8;
-      ctx.fillRect(sx, groundY - sh, sw, 2);
-      ctx.shadowBlur = 0;
+    let analysis=rr.analysis||'',hyp=rr.hypothesis||'',cand=rr.parameters;
+
+    // Executive summary + full details
+    let changes=[];for(let k of Object.keys(cand)){if(cand[k]!==bS[k])changes.push(`${k}: ${typeof bS[k]==='number'?bS[k].toFixed(1):bS[k]} -> ${typeof cand[k]==='number'?cand[k].toFixed(1):cand[k]}`);}
+    let desc=changes.join(', ')||'(no change)';
+
+    let gTxt=`EXECUTIVE SUMMARY (Gen ${gen})\n${'='.repeat(40)}\n\nWHY:  ${analysis}\n\nWHAT: ${hyp}\n\nCHANGES:\n`;
+    for(let c of changes)gTxt+=`  ${c}\n`;
+    if(!changes.length)gTxt+=`  (none)\n`;
+    gTxt+=`\nMODEL: ${rr.model||'gemini-2.5-flash'}\n\n${'='.repeat(40)}\nFULL DETAILS\n${'='.repeat(40)}\n\n`;
+    gTxt+=`--- SYSTEM PROMPT ---\n${rr.system_prompt||'(n/a)'}\n\n--- USER PROMPT ---\n${rr.user_prompt||'(n/a)'}\n\n--- RAW RESPONSE ---\n${rr.raw_response||'(n/a)'}`;
+    $('go').textContent=gTxt;
+
+    lg(`Analysis: ${analysis}`,'lg');
+    lg(`Hypothesis: ${hyp}`,'lh');
+    lg(`Changes: ${desc}`,'');
+    sDiff(bS,cand);
+
+    // 5b. Write + commit
+    await A.setSt(cand);
+    let cr=await A.commit(`exp${gen}: ${hyp.slice(0,80)}`);
+    let hash=cr.hash||'?';lg(`git commit ${hash}`,'');
+
+    // 5c. Evaluate
+    $('gd').textContent=`Gen ${gen} - Evaluating (20 games)...`;
+    $('ed').textContent=`Gen ${gen}: running evaluate.py...`;
+    let er=await A.eval();let m=er.metrics;
+    let mean=m.mean_score||0,min=m.min_score||0,max=m.max_score||0,all50=m.all_above_50||false;
+    sDth(er.details);
+
+    // 5d. Keep or discard
+    if(mean>bM){
+      let d=mean-bM;bM=mean;bN=min;bS={...cand};kept++;
+      lg(`KEEP: mean=${mean.toFixed(1)} min=${min} max=${max} [+${d.toFixed(1)}]`,'lk');
+      await A.addT(`${hash}\t${mean.toFixed(1)}\t${min}\tkeep\t${desc}`);
+      res+=`\n- Gen ${gen} KEEP: ${hyp} (mean ${mean.toFixed(1)}, +${d.toFixed(1)})`;
+      await A.setR(res);
+      ov(`Gen ${gen}: KEEP (+${d.toFixed(1)})`,hyp,'ok',2500);
+    }else{
+      disc++;
+      lg(`DISCARD: mean=${mean.toFixed(1)} min=${min} (best=${bM.toFixed(1)})`,'ld');
+      await A.addT(`${hash}\t${mean.toFixed(1)}\t${min}\tdiscard\t${desc}`);
+      await A.reset();lg(`git reset (strategy.json reverted)`,'ld');
+      await A.setSt(bS);
+      res+=`\n- Gen ${gen} DISCARD: ${hyp} (mean ${mean.toFixed(1)} vs best ${bM.toFixed(1)})`;
+      await A.setR(res);
+      ov(`Gen ${gen}: discard`,`mean=${mean.toFixed(1)} (best=${bM.toFixed(1)})`,'death',1500);
+    }
+    uS();$('sp').textContent=(m.pct_above_50||0).toFixed(0)+'%';
+    try{let gl=await A.glog();$('gi').textContent=gl.log.split('\n')[0];}catch(e){}
+    try{let hr=await A.getT();$('ho').textContent=hr.content||'';}catch(e){}
+    await sleep(1500);$('ov').className='';
+
+    // 5e. Play ALL 20 games visually
+    lg(`Playing all 20 games with current best...`,'le');
+    for(let i=0;i<seeds.length;i++){
+      if(!evolving)return;
+      $('gd').textContent=`Gen ${gen} - Game ${i+1} of 20`;
+      ov(`Gen ${gen} - Game ${i+1}/20`,`Seed ${seeds[i]}`,'ok',500);await sleep(500);
+      let sc=await playV(bS,seeds[i],`Gen ${gen} - Game ${i+1}/20 (seed ${seeds[i]})`);
+      lg(`  Seed ${seeds[i]}: score=${sc}${sc>=50?'':' (BELOW)'}`,sc>=50?'':'lr');
+    }
+
+    // 5f. Target
+    if(all50&&mean>=bM){
+      lg(`\nTARGET REACHED at Gen ${gen}! All 20 games >= 50!`,'lt');
+      ov('TARGET REACHED!',`All 20 games >= 50 at Gen ${gen}`,'ok',0);
+      $('gd').textContent=`TARGET REACHED - Gen ${gen}`;
+      evolving=false;break;
     }
   }
-
-  // Player
-  let px = 50 + game.playerX * scale / 2;
-  let py = groundY - game.playerY * scale / 2;
-  let pw = game.playerW * scale / 2;
-  let ph = game.playerH * scale / 2;
-
-  // Trail
-  ctx.fillStyle = COLORS.trail;
-  for (let i = 1; i <= 8; i++) {
-    ctx.fillRect(px - i * 4, py - ph, pw, ph);
-  }
-
-  // Player body
-  ctx.fillStyle = game.ducking ? COLORS.playerDuck : COLORS.player;
-  ctx.shadowColor = '#0ff';
-  ctx.shadowBlur = 15;
-  ctx.fillRect(px, py - ph, pw, ph);
-  ctx.shadowBlur = 0;
-
-  // Eyes
-  ctx.fillStyle = '#000';
-  let eyeY = py - ph + ph * 0.25;
-  ctx.fillRect(px + pw * 0.5, eyeY, 3, 3);
-  ctx.fillRect(px + pw * 0.75, eyeY, 3, 3);
-
-  // Jump indicator
-  if (game.jumping) {
-    ctx.strokeStyle = 'rgba(0,255,255,0.4)';
-    ctx.setLineDash([3, 3]);
-    ctx.beginPath(); ctx.moveTo(px + pw/2, py); ctx.lineTo(px + pw/2, groundY); ctx.stroke();
-    ctx.setLineDash([]);
-  }
 }
 
-// ============================================================
-// Main Loop
-// ============================================================
-let state = 'idle'; // idle, evolving, watching
-let evolveSpeed = 1;
-let currentGen = 0;
-let bestStrategy = new Strategy();
-let bestMean = 0;
-let evolveRng;
-let evolveSeeds;
-let evolvePlateau = 0;
-let watchGame = null, watchPlayer = null, watchInfo = null;
-
-const logEl = document.getElementById('log');
-const genEl = document.getElementById('gen-display');
-const scoreEl = document.getElementById('score-display');
-const speedEl = document.getElementById('speed-display');
-const bestMeanEl = document.getElementById('best-mean');
-const pct50El = document.getElementById('pct50');
-const progressFill = document.getElementById('progress-fill');
-
-function addLog(text, cls = '') {
-  let d = document.createElement('div');
-  d.className = cls;
-  d.textContent = text;
-  logEl.appendChild(d);
-  logEl.scrollTop = logEl.scrollHeight;
-}
-
-function evolveStep() {
-  if (state !== 'evolving') return;
-
-  currentGen++;
-  let rate = 0.3, strength = 0.15;
-  if (evolvePlateau > 15) { rate = 0.8; strength = 0.4; }
-  else if (evolvePlateau > 8) { rate = 0.5; strength = 0.25; }
-
-  let candidate = bestStrategy.mutate(evolveRng, rate, strength);
-  let result = evalStrategy(candidate, evolveSeeds);
-
-  if (result.mean > bestMean) {
-    let delta = result.mean - bestMean;
-    bestMean = result.mean;
-    bestStrategy = candidate;
-    evolvePlateau = 0;
-    addLog(`Gen ${currentGen}: mean=${result.mean.toFixed(1)} min=${result.min} [KEEP +${delta.toFixed(1)}]`, 'keep');
-  } else {
-    evolvePlateau++;
-    addLog(`Gen ${currentGen}: mean=${result.mean.toFixed(1)} min=${result.min} [discard]`, 'discard');
-  }
-
-  genEl.textContent = `Gen ${currentGen}`;
-  bestMeanEl.textContent = bestMean.toFixed(1);
-  pct50El.textContent = result.pct50.toFixed(0) + '%';
-  progressFill.style.width = Math.min(100, (bestMean / 50) * 100) + '%';
-
-  if (result.allAbove50 && result.mean >= bestMean) {
-    addLog(`TARGET REACHED! All games >= 50 at gen ${currentGen}`, 'keep');
-    addLog(`Scores: ${result.scores.join(', ')}`, 'keep');
-    // Keep evolving for better scores
-  }
-}
-
-function startWatch() {
-  state = 'watching';
-  watchGame = new RunnerGame(Math.floor(Math.random() * 1000));
-  watchPlayer = new AIPlayer(bestStrategy);
-  watchInfo = watchGame.info();
-  genEl.textContent = `Watching Best AI (Gen ${currentGen})`;
-}
-
-function renderLoop() {
-  if (state === 'evolving') {
-    for (let i = 0; i < evolveSpeed; i++) evolveStep();
-    // Show a quick game visualization during evolution
-    if (!watchGame || watchGame.gameOver) {
-      watchGame = new RunnerGame(currentGen % 100);
-      watchPlayer = new AIPlayer(bestStrategy);
-      watchInfo = watchGame.info();
-    }
-    for (let i = 0; i < 3; i++) {
-      if (!watchInfo.gameOver) {
-        watchInfo = watchGame.step(watchPlayer.decide(watchInfo, watchGame));
-      }
-    }
-    drawGame(watchGame, watchInfo);
-    scoreEl.textContent = `Score: ${watchInfo.score}`;
-    speedEl.textContent = `Speed: ${watchInfo.speed.toFixed(1)}`;
-  } else if (state === 'watching') {
-    if (!watchInfo.gameOver) {
-      watchInfo = watchGame.step(watchPlayer.decide(watchInfo, watchGame));
-      drawGame(watchGame, watchInfo);
-      scoreEl.textContent = `Score: ${watchInfo.score}`;
-      speedEl.textContent = `Speed: ${watchInfo.speed.toFixed(1)}`;
-    } else {
-      scoreEl.textContent = `Final Score: ${watchInfo.score}`;
-      // Auto-restart after 2s
-      setTimeout(() => { if (state === 'watching') startWatch(); }, 2000);
-    }
-  } else {
-    // Idle: just draw empty
-    drawGame(new RunnerGame(0), {});
-  }
-  requestAnimationFrame(renderLoop);
-}
-
-// Controls
-document.getElementById('btn-start').onclick = () => {
-  state = 'evolving';
-  currentGen = 0; bestMean = 0; evolvePlateau = 0;
-  bestStrategy = new Strategy();
-  evolveRng = (() => { let s = 42; return () => { s|=0; s=s+0x6D2B79F5|0;
-    let t=Math.imul(s^s>>>15,1|s); t=t+Math.imul(t^t>>>7,61|t)^t;
-    return((t^t>>>14)>>>0)/4294967296; }; })();
-  evolveSeeds = Array.from({length: 15}, (_, i) => i);
-  logEl.innerHTML = '<div class="header">Evolution Log</div>';
-  let base = evalStrategy(bestStrategy, evolveSeeds);
-  bestMean = base.mean;
-  addLog(`Baseline: mean=${base.mean.toFixed(1)} min=${base.min} max=${base.max}`, 'keep');
-  addLog(`Scores: ${base.scores.join(', ')}`, '');
-};
-
-document.getElementById('btn-pause').onclick = () => {
-  state = state === 'evolving' ? 'idle' : 'evolving';
-};
-
-document.getElementById('btn-speed1').onclick = () => { evolveSpeed = 1; };
-document.getElementById('btn-speed5').onclick = () => { evolveSpeed = 5; };
-document.getElementById('btn-speed20').onclick = () => { evolveSpeed = 20; };
-
-document.getElementById('btn-watch').onclick = () => startWatch();
-
-requestAnimationFrame(renderLoop);
+// === Controls ===
+$('btn-go').onclick=()=>{if(evolving)return;$('ov').className='';run().catch(e=>{lg(`ERROR: ${e.message}`,'lr');console.error(e);});};
+$('btn-p').onclick=()=>{paused=!paused;$('btn-p').textContent=paused?'Resume':'Pause';};
+$('btn-s').onclick=()=>{if(vG&&!vG.gameOver){vG.step(vA.decide(vG));draw(vG);uH(vG);}};
+document.querySelectorAll('.gs').forEach(b=>{b.onclick=()=>{document.querySelectorAll('.gs').forEach(x=>x.classList.remove('active'));b.classList.add('active');tpf=parseFloat(b.dataset.v);}});
+document.querySelectorAll('.pg').forEach(b=>{b.onclick=()=>{document.querySelectorAll('.pg').forEach(x=>x.classList.remove('active'));b.classList.add('active');pMs=parseInt(b.dataset.v);}});
+document.querySelectorAll('.tb div').forEach(t=>{t.onclick=()=>{document.querySelectorAll('.tb div').forEach(x=>x.classList.remove('a'));document.querySelectorAll('.tc').forEach(x=>x.classList.remove('a'));t.classList.add('a');$('t-'+t.dataset.t).classList.add('a');}});
+document.addEventListener('keydown',e=>{if(e.code==='Space'){e.preventDefault();$('btn-p').click();}if(e.code==='ArrowRight'){e.preventDefault();$('btn-s').click();}});
+function rl(){if(!vG)drawW();requestAnimationFrame(rl);}requestAnimationFrame(rl);
+fetch('/api/git/log').then(r=>r.json()).then(()=>{$('ed').textContent='Server connected -- click Start Evolution';}).catch(()=>{$('ed').textContent='ERROR: Run "python server.py" first!';$('gd').textContent='Server not running';});
 </script>
 </body>
 </html>
