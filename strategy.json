@@ -1,10 +1,10 @@
 {
-    "jump_trigger": 105,
+    "jump_trigger": 95,
     "jump_max_dist": 140,
     "emergency_dist": 8,
     "speed_factor": 4,
-    "dj_height_frac": 1.1,
-    "dj_min_ticks": 10,
+    "dj_height_frac": 1.4,
+    "dj_min_ticks": 4,
     "dj_max_dist": 90,
     "duck_trigger": 100,
     "duck_release": -40,
