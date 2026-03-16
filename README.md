@@ -62,6 +62,8 @@ a live progress chart.
 
 ## Results
 
+![Target Reached - All 20 games scoring 50+ at Generation 9](docs/target_met.jpg)
+
 Starting from a deliberately weak baseline (mean=12.3), Gemini 2.5 Pro reached
 the target in 9 generations:
 
