@@ -3,9 +3,9 @@
     "jump_max_dist": 140,
     "emergency_dist": 8,
     "speed_factor": 0.5,
-    "dj_height_frac": 0.75,
+    "dj_height_frac": 0.8,
     "dj_min_ticks": 10,
-    "dj_max_dist": 40,
+    "dj_max_dist": 60,
     "duck_trigger": 40,
     "duck_release": -10,
     "duck_speed_factor": 0.3
