@@ -69,12 +69,14 @@ button.bo{border-color:#fa0;color:#fa0}button.bo:hover{background:#fa0;color:#0a
     <div data-t="diff">Diff</div>
     <div data-t="dth">Deaths</div>
     <div data-t="hist">History</div>
+    <div data-t="chart">Progress Chart</div>
   </div>
   <div class="tc a" id="t-log"><div class="hd">Evolution Log</div></div>
   <div class="tc" id="t-gem"><div class="hd">Gemini Reasoning</div><pre id="go" style="white-space:pre-wrap;font-size:11px">Waiting...</pre></div>
   <div class="tc" id="t-diff"><div class="hd">Strategy Diff</div><pre id="do2" style="white-space:pre-wrap;font-size:11px"></pre></div>
   <div class="tc" id="t-dth"><div class="hd">Death Analysis</div><pre id="da" style="white-space:pre-wrap;font-size:11px">No data</pre></div>
   <div class="tc" id="t-hist"><div class="hd">Experiment History</div><pre id="ho" style="white-space:pre-wrap;font-size:11px"></pre></div>
+  <div class="tc" id="t-chart"><canvas id="chartCv" style="width:100%;background:#0a0a1a;border-radius:4px"></canvas></div>
 </div>
 <div id="ov"><div id="ov-in"><div id="ov-t"></div><div id="ov-d"></div></div></div>
 <div id="controls">
@@ -167,6 +169,77 @@ function drawW(){
 
 // === State ===
 let tpf=0.5,tAc=0,pMs=2000,gen=0,kept=0,disc=0,bM=0,bN=0;
+// Chart data: tracks metrics per generation for the progress chart
+let chartData=[];  // [{gen, mean, min, max, bestMean, bestMin, status}]
+
+function drawChart(){
+  let cc=document.getElementById('chartCv');
+  if(!cc||!cc.parentElement.classList.contains('a'))return;
+  let cctx=cc.getContext('2d');
+  // Size to parent
+  let pw=cc.parentElement.clientWidth-16,ph=cc.parentElement.clientHeight-16;
+  cc.width=pw*2;cc.height=ph*2;cc.style.width=pw+'px';cc.style.height=ph+'px';
+  cctx.scale(2,2);// retina
+  let W=pw,H=ph;
+  // Background
+  cctx.fillStyle='#0a0a1a';cctx.fillRect(0,0,W,H);
+  if(chartData.length<1){cctx.fillStyle='#555';cctx.font='14px monospace';cctx.textAlign='center';cctx.fillText('No data yet -- start evolution',W/2,H/2);cctx.textAlign='left';return;}
+  // Margins
+  let ml=50,mr=20,mt=30,mb=40;
+  let cw=W-ml-mr,ch=H-mt-mb;
+  // Axis ranges
+  let maxGen=Math.max(chartData.length,5);
+  let maxScore=Math.max(60,...chartData.map(d=>Math.max(d.bestMean,d.max||0)))+10;
+  let toX=g=>(ml+g/maxGen*cw);
+  let toY=v=>(mt+(1-v/maxScore)*ch);
+  // Grid
+  cctx.strokeStyle='#1a1a3a';cctx.lineWidth=1;
+  for(let v=0;v<=maxScore;v+=10){let y=toY(v);cctx.beginPath();cctx.moveTo(ml,y);cctx.lineTo(ml+cw,y);cctx.stroke();cctx.fillStyle='#555';cctx.font='9px monospace';cctx.textAlign='right';cctx.fillText(v,ml-4,y+3);}
+  // Target line at 50
+  cctx.strokeStyle='#0f04';cctx.lineWidth=2;cctx.setLineDash([6,4]);
+  cctx.beginPath();cctx.moveTo(ml,toY(50));cctx.lineTo(ml+cw,toY(50));cctx.stroke();
+  cctx.setLineDash([]);
+  cctx.fillStyle='#0f0';cctx.font='10px monospace';cctx.textAlign='left';cctx.fillText('Target: 50',ml+cw-60,toY(50)-5);
+  // Axes
+  cctx.strokeStyle='#444';cctx.lineWidth=1;
+  cctx.beginPath();cctx.moveTo(ml,mt);cctx.lineTo(ml,mt+ch);cctx.lineTo(ml+cw,mt+ch);cctx.stroke();
+  cctx.fillStyle='#888';cctx.font='10px monospace';cctx.textAlign='center';
+  cctx.fillText('Generation',ml+cw/2,H-5);
+  cctx.save();cctx.translate(12,mt+ch/2);cctx.rotate(-Math.PI/2);cctx.fillText('Score',0,0);cctx.restore();
+  // Gen labels
+  let step=Math.max(1,Math.floor(maxGen/10));
+  for(let g=0;g<=maxGen;g+=step){cctx.fillStyle='#555';cctx.font='9px monospace';cctx.textAlign='center';cctx.fillText(g,toX(g),mt+ch+14);}
+  // Plot: individual experiment scores (dots)
+  for(let i=0;i<chartData.length;i++){
+    let d=chartData[i];
+    let x=toX(d.gen);
+    // Mean dot
+    cctx.fillStyle=d.status==='keep'?'rgba(0,255,0,0.4)':'rgba(255,0,0,0.3)';
+    cctx.beginPath();cctx.arc(x,toY(d.mean),3,0,Math.PI*2);cctx.fill();
+    // Min dot
+    if(d.min!==d.mean){cctx.fillStyle=d.status==='keep'?'rgba(0,255,0,0.2)':'rgba(255,0,0,0.15)';cctx.beginPath();cctx.arc(x,toY(d.min),2,0,Math.PI*2);cctx.fill();}
+  }
+  // Plot: best mean line (cyan, solid)
+  cctx.strokeStyle='#0ff';cctx.lineWidth=2.5;cctx.beginPath();
+  let first=true;
+  for(let i=0;i<chartData.length;i++){let x=toX(chartData[i].gen),y=toY(chartData[i].bestMean);if(first){cctx.moveTo(x,y);first=false;}else cctx.lineTo(x,y);}
+  cctx.stroke();
+  // Plot: best min line (yellow, dashed)
+  cctx.strokeStyle='#ff0';cctx.lineWidth=2;cctx.setLineDash([4,3]);cctx.beginPath();
+  first=true;
+  for(let i=0;i<chartData.length;i++){let x=toX(chartData[i].gen),y=toY(chartData[i].bestMin);if(first){cctx.moveTo(x,y);first=false;}else cctx.lineTo(x,y);}
+  cctx.stroke();cctx.setLineDash([]);
+  // Legend
+  let lx=ml+10,ly=mt+10;
+  cctx.fillStyle='#0ff';cctx.fillRect(lx,ly,16,3);cctx.fillStyle='#ccc';cctx.font='10px monospace';cctx.textAlign='left';cctx.fillText('Best Mean',lx+20,ly+4);
+  ly+=14;cctx.strokeStyle='#ff0';cctx.lineWidth=2;cctx.setLineDash([4,3]);cctx.beginPath();cctx.moveTo(lx,ly);cctx.lineTo(lx+16,ly);cctx.stroke();cctx.setLineDash([]);cctx.fillStyle='#ccc';cctx.fillText('Best Min',lx+20,ly+4);
+  ly+=14;cctx.fillStyle='rgba(0,255,0,0.5)';cctx.beginPath();cctx.arc(lx+8,ly,3,0,Math.PI*2);cctx.fill();cctx.fillStyle='#ccc';cctx.fillText('Kept (mean)',lx+20,ly+4);
+  ly+=14;cctx.fillStyle='rgba(255,0,0,0.4)';cctx.beginPath();cctx.arc(lx+8,ly,3,0,Math.PI*2);cctx.fill();cctx.fillStyle='#ccc';cctx.fillText('Discarded (mean)',lx+20,ly+4);
+  // Title
+  cctx.fillStyle='#0ff';cctx.font='bold 13px monospace';cctx.textAlign='center';
+  cctx.fillText(`Evolution Progress (Gen ${gen})`,W/2,mt-10);
+  cctx.textAlign='left';
+}
 let bS=null,vG=null,vA=null,dF=0,evolving=false,paused=false;
 const $=id=>document.getElementById(id);
 function lg(t,c=''){let d=document.createElement('div');d.className=c;d.textContent=t;let e=$('t-log');e.appendChild(d);if(e.children.length>500)e.removeChild(e.children[1]);e.scrollTop=e.scrollHeight;}
@@ -221,6 +294,7 @@ async function run(){
   lg(`Baseline: mean=${bM.toFixed(1)} min=${bN} max=${bm.max_score||0}`,'lk');
   lg(`Scores: [${(baseR.details.scores||[]).join(', ')}]`,'');
   sDth(baseR.details);uS();$('sp').textContent=(bm.pct_above_50||0).toFixed(0)+'%';
+  chartData=[{gen:0,mean:bM,min:bN,max:bm.max_score||0,bestMean:bM,bestMin:bN,status:'keep'}];drawChart();
   await A.addT(`baseline\t${bM.toFixed(1)}\t${bN}\tkeep\tbaseline`);
 
   // 4. Play ALL 20 baseline games visually
@@ -298,6 +372,8 @@ async function run(){
       ov(`Gen ${gen}: discard`,`mean=${mean.toFixed(1)} (best=${bM.toFixed(1)})`,'death',1500);
     }
     uS();$('sp').textContent=(m.pct_above_50||0).toFixed(0)+'%';
+    chartData.push({gen,mean,min,max,bestMean:bM,bestMin:bN,status:mean>=bM?'keep':'discard'});
+    drawChart();
     try{let gl=await A.glog();$('gi').textContent=gl.log.split('\n')[0];}catch(e){}
     try{let hr=await A.getT();$('ho').textContent=hr.content||'';}catch(e){}
     await sleep(1500);$('ov').className='';
@@ -328,7 +404,7 @@ $('btn-p').onclick=()=>{paused=!paused;$('btn-p').textContent=paused?'Resume':'P
 $('btn-s').onclick=()=>{if(vG&&!vG.gameOver){vG.step(vA.decide(vG));draw(vG);uH(vG);}};
 document.querySelectorAll('.gs').forEach(b=>{b.onclick=()=>{document.querySelectorAll('.gs').forEach(x=>x.classList.remove('active'));b.classList.add('active');tpf=parseFloat(b.dataset.v);}});
 document.querySelectorAll('.pg').forEach(b=>{b.onclick=()=>{document.querySelectorAll('.pg').forEach(x=>x.classList.remove('active'));b.classList.add('active');pMs=parseInt(b.dataset.v);}});
-document.querySelectorAll('.tb div').forEach(t=>{t.onclick=()=>{document.querySelectorAll('.tb div').forEach(x=>x.classList.remove('a'));document.querySelectorAll('.tc').forEach(x=>x.classList.remove('a'));t.classList.add('a');$('t-'+t.dataset.t).classList.add('a');}});
+document.querySelectorAll('.tb div').forEach(t=>{t.onclick=()=>{document.querySelectorAll('.tb div').forEach(x=>x.classList.remove('a'));document.querySelectorAll('.tc').forEach(x=>x.classList.remove('a'));t.classList.add('a');$('t-'+t.dataset.t).classList.add('a');if(t.dataset.t==='chart')setTimeout(drawChart,50);}});
 document.addEventListener('keydown',e=>{if(e.code==='Space'){e.preventDefault();$('btn-p').click();}if(e.code==='ArrowRight'){e.preventDefault();$('btn-s').click();}});
 function rl(){if(!vG)drawW();requestAnimationFrame(rl);}requestAnimationFrame(rl);
 fetch('/api/git/log').then(r=>r.json()).then(()=>{$('ed').textContent='Server connected -- click Start Evolution';}).catch(()=>{$('ed').textContent='ERROR: Run "python server.py" first!';$('gd').textContent='Server not running';});
