@@ -41,35 +41,44 @@ You analyze game failure data and propose targeted parameter changes.
 - Jump power: 13.0, gravity: -0.8/tick^2, peak height ~99 units, duration ~32 ticks
 - Double jump: 0.75x power, once per jump arc
 - Player height: 40 standing, 20 ducking
-- Three obstacle types:
-  - ground (height 20-50): must JUMP over
-  - low (height 15-28): must JUMP over
-  - high (clearance 22-30): must DUCK under (player shrinks to 20)
-- Progressive difficulty: obstacles get taller, gaps shrink, speed sections appear
+- Three obstacle types appear PROGRESSIVELY:
+  - Obstacles 0-7: ONLY ground (height 20-50), must JUMP over
+  - Obstacles 8-19: ground + low (height 15-28), must JUMP over
+  - Obstacles 20+: ground + low + HIGH (clearance 22-30), must DUCK under
+- HIGH obstacles are the main barrier to scoring above 20. The AI MUST duck for them.
+- Gaps between obstacles shrink from 280 to 100 units as score increases.
 
-## Strategy Parameters (what you can tune)
+## Strategy Parameters
+JUMP parameters (for ground/low obstacles):
 - jump_trigger (30-200): base distance to trigger jump. adjusted = jump_trigger + speed * speed_factor
 - jump_max_dist (60-300): max distance to consider jumping
 - emergency_dist (5-50): last-resort emergency jump distance
-- speed_factor (0-8): how much speed affects jump timing
-- dj_height_frac (0.3-1.5): double jump if player_y < obstacle_height * this
-- dj_min_ticks (2-15): min ticks after jump before double jump allowed
-- dj_max_dist (30-150): max obstacle distance for double jump
-- duck_trigger (40-200): base distance to start ducking. adjusted = duck_trigger + speed * duck_speed_factor
-- duck_release (-60-0): distance to stop ducking (negative = behind player)
-- duck_speed_factor (0-5): how much speed affects duck timing
+- speed_factor (0-8): how much speed scales jump trigger distance
 
-## Your Task
-Given the current strategy, death analysis, and past learnings:
-1. Analyze the death patterns -- what obstacle type kills most, player state at death, speed
-2. Reason about which parameters need adjustment and WHY (cite physics)
-3. Propose new parameter values
+DOUBLE JUMP parameters (for tall obstacles):
+- dj_height_frac (0.3-1.5): double jump if player_y < obstacle_height * this
+- dj_min_ticks (2-15): min ticks after jump before double jump
+- dj_max_dist (30-150): max distance for double jump consideration
+
+DUCK parameters (CRITICAL for high obstacles at score 20+):
+- duck_trigger (40-200): base distance to start ducking. adjusted = duck_trigger + speed * duck_speed_factor
+- duck_release (-60-0): when to stop ducking (negative = obstacle behind player). MUST be more negative than obstacle width (~25 units) to avoid standing up under the obstacle.
+- duck_speed_factor (0-5): how much speed scales duck trigger distance
+
+## CRITICAL ANALYSIS RULES
+1. FIRST look at death_by_type counts. If "high" deaths > 0, duck parameters MUST be addressed.
+2. If scores cluster around 20, the AI is dying to high obstacles. Fix duck_trigger and duck_speed_factor.
+3. If the AI is "standing" when hitting a high obstacle, duck_trigger is too low.
+4. If the AI ducked but still died, duck_release is not negative enough (stood up too early).
+5. If previous experiments didn't improve, try DIFFERENT parameters than before -- don't repeat what failed.
+6. Good duck parameter values: duck_trigger=80-120, duck_release=-30 to -50, duck_speed_factor=1.0-2.0
+7. Good jump parameter values: jump_trigger=70-100, speed_factor=2.0-5.0
 
 ## Response Format
-You MUST respond with valid JSON only, no markdown, no explanation outside JSON:
+Respond with valid JSON only, no markdown:
 {
-  "analysis": "Brief analysis of death patterns (1-2 sentences)",
-  "hypothesis": "What you're changing and why (1-2 sentences)",
+  "analysis": "What obstacle type is killing the AI and why (1-2 sentences)",
+  "hypothesis": "What parameters you're changing and the physics reasoning (1-2 sentences)",
   "parameters": {
     "jump_trigger": <number>,
     "jump_max_dist": <number>,
@@ -84,11 +93,10 @@ You MUST respond with valid JSON only, no markdown, no explanation outside JSON:
   }
 }
 
-Only change parameters that your analysis suggests need adjustment. Keep others at their current values.
-Make targeted changes, not random ones. Change 1-4 parameters per experiment."""
+Change 2-5 parameters per experiment. If stuck, make BOLD changes, not incremental ones."""
 
 
-def call_gemini(current_strategy, last_run, resources):
+def call_gemini(current_strategy, last_run, resources, plateau_count=0):
     """Call Gemini to analyze failures and propose strategy changes."""
     from google import genai
 
@@ -111,6 +119,14 @@ Worst 5 deaths:
         user_msg += f"speed={d['speed_at_death']}\n"
 
     user_msg += f"\n## Past Learnings\n{resources}\n"
+
+    if plateau_count >= 3:
+        user_msg += f"\n## WARNING: PLATEAU DETECTED ({plateau_count} consecutive discards)\n"
+        user_msg += "Your previous suggestions have NOT improved scores. You MUST try something DIFFERENT.\n"
+        user_msg += "Look at death_by_type above. If 'high' deaths > 0, you MUST increase duck_trigger and duck_speed_factor.\n"
+        user_msg += "If scores are stuck around 20, high obstacles at obstacle index 20+ are killing the AI.\n"
+        user_msg += "Try BOLD changes: duck_trigger=100, duck_speed_factor=1.5, duck_release=-40.\n"
+
     user_msg += "\nPropose improved parameters. Respond with JSON only."
 
     response = client.models.generate_content(
@@ -306,8 +322,9 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             current_strategy = data.get('strategy', {})
             last_run_data = data.get('last_run', {})
             resources_text = data.get('resources', '')
+            plateau_count = data.get('plateau_count', 0)
             try:
-                result = call_gemini(current_strategy, last_run_data, resources_text)
+                result = call_gemini(current_strategy, last_run_data, resources_text, plateau_count)
                 self.json_response(200, {
                     'ok': True,
                     'analysis': result.get('analysis', ''),

@@ -168,7 +168,7 @@ function drawW(){
 }
 
 // === State ===
-let tpf=0.5,tAc=0,pMs=2000,gen=0,kept=0,disc=0,bM=0,bN=0;
+let tpf=0.5,tAc=0,pMs=2000,gen=0,kept=0,disc=0,bM=0,bN=0,plateau=0;
 // Chart data: tracks metrics per generation for the progress chart
 let chartData=[];  // [{gen, mean, min, max, bestMean, bestMin, status}]
 
@@ -268,7 +268,7 @@ async function playV(params,seed,label){
 
 // === THE REAL KARPATHY LOOP + GEMINI ===
 async function run(){
-  evolving=true;paused=false;gen=0;kept=0;disc=0;bM=0;bN=0;
+  evolving=true;paused=false;gen=0;kept=0;disc=0;bM=0;bN=0;plateau=0;
   $('t-log').innerHTML='<div class="hd">Evolution Log (Karpathy + Gemini)</div>';
   $('go').textContent='Waiting...';
   let seeds=Array.from({length:20},(_,i)=>i);
@@ -320,7 +320,7 @@ async function run(){
     lg(`\n=== Gen ${gen} ===`,'hd');lg(`Asking Gemini...`,'lg');
 
     let lr;try{lr=await A.getLastRun();}catch(e){lr=baseR.details;}
-    let rr;try{rr=await A.reason({strategy:bS,last_run:lr,resources:res});}catch(e){lg(`Gemini error: ${e.message}`,'lr');await sleep(2000);continue;}
+    let rr;try{rr=await A.reason({strategy:bS,last_run:lr,resources:res,plateau_count:plateau});}catch(e){lg(`Gemini error: ${e.message}`,'lr');await sleep(2000);continue;}
     if(!rr.ok){lg(`Gemini error: ${rr.error}`,'lr');await sleep(2000);continue;}
 
     let analysis=rr.analysis||'',hyp=rr.hypothesis||'',cand=rr.parameters;
@@ -355,14 +355,14 @@ async function run(){
 
     // 5d. Keep or discard
     if(mean>bM){
-      let d=mean-bM;bM=mean;bN=min;bS={...cand};kept++;
+      let d=mean-bM;bM=mean;bN=min;bS={...cand};kept++;plateau=0;
       lg(`KEEP: mean=${mean.toFixed(1)} min=${min} max=${max} [+${d.toFixed(1)}]`,'lk');
       await A.addT(`${hash}\t${mean.toFixed(1)}\t${min}\tkeep\t${desc}`);
       res+=`\n- Gen ${gen} KEEP: ${hyp} (mean ${mean.toFixed(1)}, +${d.toFixed(1)})`;
       await A.setR(res);
       ov(`Gen ${gen}: KEEP (+${d.toFixed(1)})`,hyp,'ok',2500);
     }else{
-      disc++;
+      disc++;plateau++;
       lg(`DISCARD: mean=${mean.toFixed(1)} min=${min} (best=${bM.toFixed(1)})`,'ld');
       await A.addT(`${hash}\t${mean.toFixed(1)}\t${min}\tdiscard\t${desc}`);
       await A.reset();lg(`git reset (strategy.json reverted)`,'ld');
