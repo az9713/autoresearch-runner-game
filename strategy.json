@@ -1,12 +1,12 @@
 {
-    "jump_trigger": 118.79753128367307,
+    "jump_trigger": 60,
     "jump_max_dist": 140,
-    "emergency_dist": 15.203262254779258,
-    "speed_factor": 0,
-    "dj_height_frac": 0.4034941407635051,
+    "emergency_dist": 8,
+    "speed_factor": 0.5,
+    "dj_height_frac": 0.75,
     "dj_min_ticks": 10,
     "dj_max_dist": 40,
-    "duck_trigger": 128.02871811691045,
-    "duck_release": -23.639130613102196,
+    "duck_trigger": 40,
+    "duck_release": -10,
     "duck_speed_factor": 0.3
 }
