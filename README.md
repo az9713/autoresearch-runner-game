@@ -62,7 +62,7 @@ a live progress chart.
 
 ## Results
 
-![Target Reached - All 20 games scoring 50+ at Generation 9](docs/target_met.jpg)
+![Evolution Progress - From baseline to target](docs/progress.jpg)
 
 ### Full Gameplay Video
 
